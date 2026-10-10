@@ -1,0 +1,7 @@
+{
+    "require": {
+        "php-di/php-di": "^7.1",
+        "monolog/monolog": "^3.12",
+        "vlucas/phpdotenv": "^5.7"
+    }
+}

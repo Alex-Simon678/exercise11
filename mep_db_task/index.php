@@ -1,42 +1,58 @@
 <?php
 
 require __DIR__ . '/vendor/autoload.php';
-require_once 'ProductRepository.php';
 
-$host = 'db'; 
-$db   = 'mep_db_task';
-$user = 'root';
-$pass = 'root';
-$charset = 'utf8mb4';
+require_once 'DatabaseConnectionInterface.php';
+require_once 'PdoConnection.php';
+require_once 'ProductService.php';
+require_once 'Box.php';
 
-$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
-$options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_EMULATE_PREPARES   => false,
-];
+use DI\ContainerBuilder;
+use Dotenv\Dotenv;
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
+use Psr\Log\LoggerInterface;
 
-try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
-} catch (\PDOException $e) {
-    die("Database connection failed: " . $e->getMessage());
-}
+$dotenv = Dotenv::createImmutable(__DIR__);
+$dotenv->load();
 
-$repository = new ProductRepository($pdo);
+$containerBuilder = new ContainerBuilder();
+$containerBuilder->addDefinitions([
+    
+    LoggerInterface::class => function() {
+        $logger = new Logger('app');
+        $logger->pushHandler(new StreamHandler(__DIR__ . '/app.log', Logger::DEBUG));
+        return $logger;
+    },
+    
+    DatabaseConnectionInterface::class => function() {
+        return new PdoConnection(
+            $_ENV['DB_HOST'],
+            $_ENV['DB_NAME'],
+            $_ENV['DB_USER'],
+            $_ENV['DB_PASS']
+        );
+    }
+]);
+
+$container = $containerBuilder->build();
+
+$box = $container->get(Box::class);
+$box->getCount();
+
+$productService = $container->get(ProductService::class);
 
 $page = isset($_GET['page']) && (int)$_GET['page'] > 0 ? (int)$_GET['page'] : 1;
-
-$products = $repository->getAll($page);
+$products = $productService->getAllProducts($page);
 
 ?>
+
 <!doctype html>
 <html lang="en">
 <head>
-    <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
           integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
     <title>PHP Mentored Education Program, Module 10: SQL, PDO</title>

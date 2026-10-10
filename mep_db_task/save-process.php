@@ -4,6 +4,11 @@ require __DIR__ . '/vendor/autoload.php';
 require_once 'ProductForm.php';
 require_once 'Product.php';
 require_once 'ProductRepository.php';
+require_once 'DatabaseConnectionInterface.php';
+require_once 'PdoConnection.php';
+
+use DI\ContainerBuilder;
+use Dotenv\Dotenv;
 
 if (!empty($_POST)) {
     $form = new ProductForm();
@@ -17,15 +22,30 @@ if (!empty($_POST)) {
         $product->category = $form->category;
         $product->description = $form->description;
 
-        $dsn = "mysql:host=db;dbname=mep_db_task;charset=utf8mb4";
+        $dotenv = Dotenv::createImmutable(__DIR__);
+        $dotenv->load();
+
+        $containerBuilder = new ContainerBuilder();
+        $containerBuilder->addDefinitions([
+            DatabaseConnectionInterface::class => function() {
+                return new PdoConnection(
+                    $_ENV['DB_HOST'],
+                    $_ENV['DB_NAME'],
+                    $_ENV['DB_USER'],
+                    $_ENV['DB_PASS']
+                );
+            },
+            PDO::class => function(\Psr\Container\ContainerInterface $c) {
+                return $c->get(DatabaseConnectionInterface::class)->getConnection();
+            }
+        ]);
+        $container = $containerBuilder->build();
+
         try {
-            $pdo = new PDO($dsn, 'root', 'root', [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-            ]);
-            $repository = new ProductRepository($pdo);
+            $repository = $container->get(ProductRepository::class);
             $repository->save($product);
-        } catch (\PDOException $e) {
-            die("Database connection failed: " . $e->getMessage());
+        } catch (\Exception $e) {
+            die("Database connection/save failed: " . $e->getMessage());
         }
     } else {
         header('Location: index.php?error=validation_failed', true, 301);
