@@ -3,7 +3,7 @@
 require __DIR__ . '/vendor/autoload.php';
 require_once 'ProductForm.php';
 require_once 'Product.php';
-require_once 'ProductRepository.php';
+require_once 'ProductService.php';
 require_once 'DatabaseConnectionInterface.php';
 require_once 'PdoConnection.php';
 
@@ -45,8 +45,8 @@ if (!empty($_POST)) {
         $container = $containerBuilder->build();
 
         try {
-            $repository = $container->get(ProductRepository::class);
-            $repository->update($product);
+            $productService = $container->get(ProductService::class);
+            $productService->update($product);
         } catch (\Exception $e) {
             die("Database connection/update failed: " . $e->getMessage());
         }

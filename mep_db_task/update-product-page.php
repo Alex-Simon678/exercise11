@@ -1,6 +1,13 @@
 <?php
+require __DIR__ . '/vendor/autoload.php';
+
 require_once 'Product.php';
-require_once 'ProductRepository.php';
+require_once 'DatabaseConnectionInterface.php';
+require_once 'PdoConnection.php';
+require_once 'ProductService.php';
+
+use DI\ContainerBuilder;
+use Dotenv\Dotenv;
 
 // 1. Get the ID from the URL (e.g., ?id=1)
 $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
@@ -11,23 +18,35 @@ if (!$id) {
     exit();
 }
 
-// 2. Connect to the database
-$dsn = "mysql:host=db;dbname=mep_db_task;charset=utf8mb4";
+// 2. Build the DI container (connection parameters come from the .env file)
+$dotenv = Dotenv::createImmutable(__DIR__);
+$dotenv->load();
+
+$containerBuilder = new ContainerBuilder();
+$containerBuilder->addDefinitions([
+    DatabaseConnectionInterface::class => function () {
+        return new PdoConnection(
+            $_ENV['DB_HOST'],
+            $_ENV['DB_NAME'],
+            $_ENV['DB_USER'],
+            $_ENV['DB_PASS']
+        );
+    },
+]);
+$container = $containerBuilder->build();
+
 try {
-    $pdo = new PDO($dsn, 'root', 'root', [
-        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
-    ]);
-    $repository = new ProductRepository($pdo);
-    
+    $productService = $container->get(ProductService::class);
+
     // 3. Fetch the existing product data
-    $product = $repository->get($id);
-    
+    $product = $productService->get($id);
+
     // If the product doesn't exist in the database, redirect back
     if (!$product) {
         header('Location: index.php', true, 301);
         exit();
     }
-} catch (\PDOException $e) {
+} catch (\Exception $e) {
     die("Database connection failed: " . $e->getMessage());
 }
 ?>

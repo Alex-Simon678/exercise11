@@ -14,12 +14,12 @@ class ProductForm {
             return false;
         }
         
-        if(strlen($this->name) >= 64 || strlen($this->category) >= 64)
+        if(strlen($this->name) > 64 || strlen($this->category) > 64)
         {
             return false;
         }
         
-        if(strlen($this->description) >= 500)
+        if(strlen($this->description) > 500)
         {
             return false;
         }
